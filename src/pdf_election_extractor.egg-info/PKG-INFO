@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: pdf-election-extractor
+Version: 0.1.0
+Summary: Extract precinct-level election results from PDF tabulations
+Author-email: Your Name <you@example.com>
+Requires-Dist: pdfplumber>=0.10
+Requires-Dist: pandas>=1.5
+Requires-Dist: tqdm>=4.64

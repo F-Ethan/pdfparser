@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+src/pdf_election_extractor.egg-info/PKG-INFO
+src/pdf_election_extractor.egg-info/SOURCES.txt
+src/pdf_election_extractor.egg-info/dependency_links.txt
+src/pdf_election_extractor.egg-info/requires.txt
+src/pdf_election_extractor.egg-info/top_level.txt

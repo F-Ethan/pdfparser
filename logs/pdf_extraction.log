@@ -1,0 +1,14 @@
+2025-11-07 22:47:49,739 - INFO - Starting Tarrant_March-27-2021_Grand_Prairie_Runoff_Election_Precinct_Results.pdf
+2025-11-07 22:55:52,591 - INFO - START Tarrant_March-27-2021_Grand_Prairie_Runoff_Election_Precinct_Results.pdf
+2025-11-07 22:55:52,620 - INFO - Event → EventData(date='3/27/2021', election_type='', county='', total_ballots='8')
+2025-11-07 23:18:54,795 - INFO - START Tarrant_March-27-2021_Grand_Prairie_Runoff_Election_Precinct_Results.pdf
+2025-11-07 23:18:54,824 - INFO - Event → EventData(date='3/27/2021', election_type='', county='', total_ballots='8')
+2025-11-07 23:20:17,092 - INFO - START Tarrant_March-27-2021_Grand_Prairie_Runoff_Election_Precinct_Results.pdf
+2025-11-07 23:20:17,121 - INFO - Event → EventData(date='3/27/2021', election_type='', county='', total_ballots='8')
+2025-11-07 23:20:17,144 - WARNING - Could not parse contest title: Precinct Results Report Official Results
+2025-11-08 00:06:19,010 - INFO - START Tarrant_March-27-2021_Grand_Prairie_Runoff_Election_Precinct_Results.pdf
+2025-11-08 00:06:19,028 - INFO - Event → EventData(date='3/27/2021', election_type='', county='', total_ballots='8')
+2025-11-08 00:06:19,046 - WARNING - Could not parse contest title: Precinct Results Report Official Results
+2025-11-08 02:30:48,693 - INFO - START 3.5.24 final official Precinct Results-3-12-2024 09-07-06 AM.pdf
+2025-11-08 02:30:48,786 - INFO - Event → EventData(date='3/5/2024', election_type='', county='JIM WELLS COUNTY', total_ballots='6077')
+2025-11-08 02:30:48,809 - WARNING - Could not parse contest title: Precinct Results Report Unofficial Results
