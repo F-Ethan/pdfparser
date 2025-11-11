@@ -5,16 +5,42 @@ from typing import List, Optional
 import re
 
 
-
 # --------------------------------------------------------------------- #
-# 1. Event header
+# 1. Event
 # --------------------------------------------------------------------- #
-@dataclass(frozen=True)
+@dataclass
 class EventData:
     date: str = ""
     election_type: str = ""
     county: str = ""
     total_ballots: str = ""
+    party: str = ""
+
+    precincts: List['Precinct'] = field(default_factory=list)
+
+    def to_csv_rows(self) -> List[dict]:
+        rows = []
+        for precinct in self.precincts:
+            for contest in precinct.contests:
+                for cand in contest.candidates:
+                    rows.append({
+                        "Event Date": self.date,
+                        "Event Type": self.election_type,
+                        "County": self.county,
+                        "Precinct Name": precinct.name,
+                        "Candidate": cand.name,
+                        "Total Votes Cast": cand.total_votes,
+                        "Office": contest.office,
+                        "# of winners": contest.vote_for,  # ← fixed
+                        "Total Ballots Cast": self.total_ballots,
+                        "Ballots Cast": precinct.ballots_cast,
+                        "Over Votes": precinct.overvotes or "N/A",
+                        "Undervotes": precinct.undervotes or "N/A",
+                        "Candidate Party": cand.party or "",
+                        "Contest Party": self.party,
+                        "Raw Title": contest.title,
+                    })
+        return rows
 
 
 # --------------------------------------------------------------------- #
@@ -26,6 +52,11 @@ class Precinct:
     name: str = ""
     ballots_cast: str = ""
     registered_voters: str = ""
+    overvotes: str = ""
+    undervotes: str = ""
+
+    contests: List['Contest'] = field(default_factory=list)
+    event: Optional[EventData] = None  # back-link
 
 
 # --------------------------------------------------------------------- #
@@ -33,22 +64,15 @@ class Precinct:
 # --------------------------------------------------------------------- #
 @dataclass
 class Contest:
-    title: str = ""                     # raw title from PDF
-    party: Optional[str] = None         # contest-level party (Dem/Rep/…)
+    title: str = ""
+    party: Optional[str] = None
     overvotes: str = ""
     undervotes: str = ""
-    candidates: List["CandidateResult"] = field(default_factory=list)
 
-    # ---- extracted from title (cached internally) ----
-    _modifier: str = ""
+    precinct: Optional[Precinct] = None  # back-link
+    candidates: List['CandidateResult'] = field(default_factory=list)
+
     _vote_for: str = "1"
-
-    # -----------------------------------------------------------------
-    # CSV-mapped properties (read-only)
-    # -----------------------------------------------------------------
-    @property
-    def modifier(self) -> str:
-        return self._modifier
 
     @property
     def vote_for(self) -> str:
@@ -59,18 +83,6 @@ class Contest:
         base = self.title.split(" - ", 1)[0]
         base = re.sub(r"\s*[\(\[]?(Vote|Elect|Choose|Top)\s+\d+[\)\]]?", "", base, flags=re.IGNORECASE)
         return base.strip()
-
-    @property
-    def district_name(self) -> str:
-        return self.office
-
-    @property
-    def district_type(self) -> str:
-        return self.office
-
-    @property
-    def number_of_winners(self) -> str:
-        return self.vote_for
 
 
 # --------------------------------------------------------------------- #
@@ -85,6 +97,8 @@ class CandidateResult:
     absentee_votes: str = ""
     election_day_votes: str = ""
 
+    contest: Optional[Contest] = None  # back-link
+
     @property
     def vote_channel(self) -> str:
         if self.total_votes:
@@ -96,27 +110,3 @@ class CandidateResult:
         if self.election_day_votes:
             return "Election Day"
         return "Total"
-
-
-@dataclass
-class Row:
-    Event_Date: str = ""
-    Event_Type: str = ""
-    Precinct_Name: str = ""
-    Vote_Channel: str = ""
-    Candidate: str = ""
-    Total_Votes: str = ""
-    Total_Votes_Cast: str = ""
-    District_Name: str = ""
-    District_Type: str = ""
-    Office: str = ""
-    Office_Modifier: str = ""
-    n_winners: str = "1"
-    Total_Ballots_Cast: str = ""
-    Over_Votes: str = "N/A"
-    Undervotes: str = "N/A"
-    Ballots_Cast: str = ""
-    County: str = ""
-    Raw_Title: str = ""
-    Candidate_Party: str = ""
-    Contest_Party: str = ""

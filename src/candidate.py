@@ -1,21 +1,23 @@
 # src/candidate.py
 import re
 import logging
-from typing import List, Tuple, Optional
-from src.models import CandidateResult
+from typing import List, Optional, Tuple
+from src.models import CandidateResult, Contest, EventData, Precinct
+
+log = logging.getLogger(__name__)
 
 
 class CandidateParser:
     """
-    Parses a single candidate line → CandidateResult object.
+    Parses candidate lines from a contest block.
     Handles:
-      - Name + party (from line or filename fallback)
-      - Multiple vote/percent pairs (by channel)
+      - Name + party (from line or event fallback)
+      - Multiple vote channels: Total, Early, Absentee, Election Day
       - Skips summary rows (Cast/Over/Under Votes)
     """
 
     # --------------------------------------------------------------------- #
-    # Regexes (class-level, compiled once)
+    # Regex patterns
     # --------------------------------------------------------------------- #
     _VOTE_PERCENT_PAIR = re.compile(r"(\d{1,3}(?:,\d{3})*)\s+(\d+\.\d{2})%")
     _SUMMARY_ROW = re.compile(r"^(Cast|Over|Under)\s+Votes:", re.IGNORECASE)
@@ -25,33 +27,50 @@ class CandidateParser:
     )
 
     # --------------------------------------------------------------------- #
-    # Public API
+    # Public API: Parse entire block
     # --------------------------------------------------------------------- #
     @staticmethod
-    def parse(
-        line: str,
-        file_party: Optional[str] = None
-    ) -> Optional[CandidateResult]:
+    def parse_block(
+        lines: List[str],
+        contest: Contest,
+        event_party: Optional[str] = None
+    ) -> List[CandidateResult]:
         """
-        Parse one candidate line.
+        Parse all candidate lines in a contest block.
 
         Args:
-            line: Raw line from PDF
-            file_party: Fallback party if not in line and PARTY_BY_FILE is used
+            lines: List of raw lines (after contest title)
+            contest: Parent Contest object (for over/undervotes)
+            event_party: Fallback party from Event (e.g., "DEM" from filename)
 
         Returns:
-            CandidateResult or None if not a candidate line
+            List of CandidateResult objects
         """
-        line = line.strip()
-        if not line:
-            return None
+        candidates: List[CandidateResult] = []
+        fallback_party = event_party or ""
 
-        # 1. Skip summary rows
-        if CandidateParser._SUMMARY_ROW.match(line):
-            logging.debug(f"Skipping summary line: {line[:60]}...")
-            return None
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
 
-        # 2. Extract name/party info before first vote/percent
+            # Skip summary rows
+            if CandidateParser._SUMMARY_ROW.match(line):
+                CandidateParser._capture_summary(line, contest)
+                continue
+
+            candidate = CandidateParser._parse_line(line, fallback_party)
+            if candidate:
+                candidate.contest = contest
+                candidates.append(candidate)
+
+        return candidates
+
+    # --------------------------------------------------------------------- #
+    # Internal: Parse one line
+    # --------------------------------------------------------------------- #
+    @staticmethod
+    def _parse_line(line: str, fallback_party: str) -> Optional[CandidateResult]:
         info_match = CandidateParser._INFO_CAPTURE.match(line)
         if not info_match:
             return None
@@ -59,40 +78,88 @@ class CandidateParser:
         candidate_info = info_match.group(1).strip()
         rest = line[info_match.end():]
 
-        # 3. Extract party from name
+        # Extract party from name
         if party_match := CandidateParser._INFO_PARTY.match(candidate_info):
             name = party_match.group(1).strip()
             party = party_match.group(2).upper()
         else:
             name = candidate_info
-            party = file_party or ""
+            party = fallback_party
             if not party:
-                logging.warning(f"No party found for candidate: {name}")
+                log.debug(f"No party for candidate: {name}")
 
-        # 4. Extract vote/percent pairs
-        results: List[Tuple[int, float]] = []
-        for vote_str, pct_str in CandidateParser._VOTE_PERCENT_PAIR.findall(rest):
+        # Extract vote/percent pairs
+        results = []
+        for vote_str, _ in CandidateParser._VOTE_PERCENT_PAIR.findall(rest):
             try:
                 vote_count = int(vote_str.replace(",", ""))
-                percent = float(pct_str)
-                results.append((vote_count, percent))
+                results.append(vote_count)
             except ValueError:
-                logging.warning(f"Invalid vote/percent: '{vote_str}' / '{pct_str}'")
+                log.warning(f"Invalid vote count: '{vote_str}' in line: {line[:80]}")
 
-        # 5. Map to vote channels (in order: Total, Early, Absentee, Election Day)
         if not results:
             return None
 
-        total_votes = str(results[0][0])
-        early = str(results[1][0]) if len(results) > 1 else ""
-        absentee = str(results[2][0]) if len(results) > 2 else ""
-        election_day = str(results[3][0]) if len(results) > 3 else ""
+        # Map to channels (in order)
+        total = str(results[0])
+        early = str(results[1]) if len(results) > 1 else ""
+        absentee = str(results[2]) if len(results) > 2 else ""
+        election_day = str(results[3]) if len(results) > 3 else ""
 
         return CandidateResult(
             name=name,
             party=party,
-            total_votes=total_votes,
+            total_votes=total,
             early_votes=early,
             absentee_votes=absentee,
             election_day_votes=election_day,
         )
+
+    # --------------------------------------------------------------------- #
+    # Internal: Capture Over/Under Votes into Contest
+    # --------------------------------------------------------------------- #
+    @staticmethod
+    def _capture_summary(line: str, contest: Contest) -> None:
+        if "Over Votes" in line:
+            match = re.search(r"(\d{1,3}(?:,\d{3})*)", line)
+            if match:
+                contest.overvotes = match.group(1).replace(",", "")
+        elif "Under Votes" in line:
+            match = re.search(r"(\d{1,3}(?:,\d{3})*)", line)
+            if match:
+                contest.undervotes = match.group(1).replace(",", "")
+
+    # --------------------------------------------------------------------- #
+    # NEW: Build CSV rows from parsed data
+    # --------------------------------------------------------------------- #
+    @staticmethod
+    def build_rows(
+        candidates: List[CandidateResult],
+        event: EventData,
+        precinct: Precinct,
+        contest: Contest,
+    ) -> List[dict]:
+        """
+        Convert parsed candidates into CSV-ready dict rows.
+        Called by _save_buffer() in the controller.
+        """
+        rows = []
+        for cand in candidates:
+            rows.append({
+                "Event Date": event.date,
+                "Event Type": event.election_type,
+                "County": event.county,
+                "Precinct Name": precinct.name,
+                "Candidate": cand.name,
+                "Total Votes Cast": cand.total_votes,
+                "Office": contest.office,
+                "# of winners": contest.vote_for,
+                "Total Ballots Cast": event.total_ballots,
+                "Ballots Cast": precinct.ballots_cast,
+                "Over Votes": contest.overvotes or "N/A",
+                "Undervotes": contest.undervotes or "N/A",
+                "Candidate Party": cand.party or "",
+                "Contest Party": event.party,
+                "Raw Title": contest.title,
+            })
+        return rows
