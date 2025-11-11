@@ -83,34 +83,59 @@ class CandidateParser:
 
         # 5. Map the 4 possible channels (Total is always the **last** number)
         total = votes[-1].replace(",", "")
+        absentee = votes[0].replace(",", "") if len(votes) > 2 else ""
         early = votes[1].replace(",", "") if len(votes) > 1 else ""
-        absentee = votes[2].replace(",", "") if len(votes) > 2 else ""
-        election_day = votes[3].replace(",", "") if len(votes) > 3 else ""
+        election_day = votes[2].replace(",", "") if len(votes) > 3 else ""
 
         result = CandidateResult(
             name=name,
             party=party or fallback_party,
-            total_votes=total,
+            total_votes=total,        
             early_votes=early,
             absentee_votes=absentee,
             election_day_votes=election_day,
         )
+        
 
         log.debug(
             "CANDIDATE → %s | Party:%s | T:%s E:%s A:%s D:%s",
             name, result.party, total, early, absentee, election_day,
         )
         return result
-
-    # --------------------------------------------------------------------- #
+    
     @staticmethod
     def _capture_summary(line: str, contest: Contest) -> None:
-        m = re.search(r"(\d{1,3}(?:,\d{3})*)", line)
-        if not m:
+        line = line.strip()
+        total = None
+
+        # -------------------------------------------------
+        # 1. Format WITH percentages (common in Cast Votes)
+        # -------------------------------------------------
+        if m := re.search(r"(?:Cast|Over|Under)\s*[Vv]otes?[:\s]+.*?\s+(\d{1,3}(?:,\d{3})*)\s+\d+\.\d{2}%$", line):
+            total = m.group(1).replace(",", "")
+
+        # -------------------------------------------------
+        # 2. Format WITHOUT percentages (common in Over/Under)
+        # -------------------------------------------------
+        elif m := re.search(r"(?:Cast|Over|Under)\s*[Vv]otes?[:\s]+.*?\s+(\d{1,3}(?:,\d{3})*)$", line):
+            total = m.group(1).replace(",", "")
+
+        # -------------------------------------------------
+        # 3. Fallback: last number in the line (for "undervotes 2 45 65 112")
+        # -------------------------------------------------
+        elif m := re.search(r"(?:Cast|Over|Under)\s*[Vv]otes?[:\s]+.*?\s+(\d{1,3}(?:,\d{3})*)\s*", line):
+            # Find ALL numbers, take the last one
+            votes = re.findall(r"\d{1,3}(?:,\d{3})*", line)
+            if votes:
+                total = votes[-1].replace(",", "")
+
+        if not total:
             return
-        val = m.group(1).replace(",", "")
-        if "Over" in line:
-            contest.overvotes = val
-        elif "Under" in line:
-            contest.undervotes = val
-        # Cast Votes is optional – we don’t need it for CSV
+
+        # Assign to correct field
+        if re.search(r"Over\s*[Vv]otes?", line, re.IGNORECASE):
+            contest.overvotes = total
+        elif re.search(r"Under\s*[Vv]otes?", line, re.IGNORECASE):
+            contest.undervotes = total
+        elif re.search(r"Cast\s*[Vv]otes?", line, re.IGNORECASE):
+            contest.cast_votes = total

@@ -37,26 +37,28 @@ class EventData:
                         ("Total", cand.total_votes),
                     ]
 
-                    for channel_name, vote_count in channels:
+                    for channel, votes in channels:
 
                         rows.append({
                             "Event Date": self.date,
                             "Event Type": self.election_type or 'N/A',
                             "County": self.county,
                             "Precinct Name": precinct.number,
-                            "Vote Channel": channel_name,           # ← CORRECT
+                            "Vote Channel": channel,
                             "Candidate": cand.name,
-                            "Total Votes Cast": vote_count,         # ← per channel
+                            "Votes": votes,                    
+                            "Total Votes Cast": contest.cast_votes,
                             "Office": contest.office,
-                            "district Name": contest.title,
-                            "district Type": contest.title,
+                            "District Name": contest.title,
+                            "District Type": contest.title,
+                            "Office Modifier": contest.modifier,
                             "# of winners": contest.vote_for,
                             "Total Ballots Cast": self.total_ballots,
                             "Ballots Cast": precinct.ballots_cast,
-                            "Over Votes": getattr(precinct, "overvotes", "") or "N/A",
-                            "Undervotes": getattr(precinct, "undervotes", "") or "N/A",
+                            "Over Votes": contest.overvotes or 'N/A',
+                            "Undervotes": contest.undervotes or 'N/A',
                             "Candidate Party": cand.party or "",
-                            "Contest Party": self.party,
+                            "Contest Party": contest.party or self.party,
                             "Raw Title": contest.title,
                         })
 
@@ -80,17 +82,19 @@ class EventData:
                     "Precinct Name": precinct.number,
                     "Vote Channel": channel,
                     "Candidate": cand.name,
-                    "Total Votes Cast": votes,
+                    "Votes": votes,                    
+                    "Total Votes Cast": contest.cast_votes,
                     "Office": contest.office,
-                    "district Name": contest.title,
-                    "district Type": contest.title,
+                    "District Name": contest.office,
+                    "District Type": contest.office,
+                    "Office Modifier": contest.modifier,
                     "# of winners": contest.vote_for,
                     "Total Ballots Cast": self.total_ballots,
                     "Ballots Cast": precinct.ballots_cast,
-                    "Over Votes": getattr(precinct, "overvotes", "") or "N/A",
-                    "Undervotes": getattr(precinct, "undervotes", "") or "N/A",
+                    "Over Votes": contest.overvotes or 'N/A',
+                    "Undervotes": contest.undervotes or 'N/A',
                     "Candidate Party": cand.party or "",
-                    "Contest Party": self.party,
+                    "Contest Party": contest.party or self.party,
                     "Raw Title": contest.title,
                 })
         return rows
@@ -118,8 +122,10 @@ class Precinct:
 class Contest:
     title: str = ""
     party: Optional[str] = None
+    cast_votes: str = ""
     overvotes: str = ""
     undervotes: str = ""
+    modifier: str = ""
 
     precinct: Optional[Precinct] = None  # back-link
     candidates: List['CandidateResult'] = field(default_factory=list)

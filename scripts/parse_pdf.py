@@ -15,6 +15,7 @@ from tqdm import tqdm
 from src.config import (
     INPUT_DIR,
     OUTPUT_DIR,
+    LOG_DIR,
     OUTPUT_CSV,
     IN_DEVELOPMENT,
     DEBUG_PAGE_RANGE,
@@ -48,7 +49,7 @@ def page_to_lines(page) -> List[str]:
 # Core extraction per PDF
 # --------------------------------------------------------------------- #
 def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
-    log.info(f"START {pdf_path.name}")
+    log.debug(f"START {pdf_path.name}")
     print(f"START: {pdf_path.name}")
 
     with pdfplumber.open(pdf_path) as pdf:
@@ -61,7 +62,7 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
         event: EventData = event_parser.parse()  # EventData with empty precincts
         event.precincts = []  # ensure list is mutable
 
-        log.info(f"FIRST LINES: {first_lines}")
+        log.debug(f"FIRST LINES: {first_lines}")
 
         # -----------------------------------------------------------------
         # 2. Page range
@@ -114,7 +115,7 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
                         current_precinct.event = event
                         current_precinct.contests = []
                         event.precincts.append(current_precinct)
-                        log.info(f"PAGE {pno} → PRECINCT SET: {precinct.number} | Cast: {precinct.ballots_cast}")
+                        log.debug(f"PAGE {pno} → PRECINCT SET: {precinct.number} | Cast: {precinct.ballots_cast}")
                         continue
                     else:
                         # Still no precinct → skip contest checks
@@ -143,7 +144,7 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
         if buffer and current_precinct:
             _save_buffer(buffer, event, current_precinct, writer)
 
-    log.info(f"FINISHED {pdf_path.name}")
+    log.debug(f"FINISHED {pdf_path.name}")
     return event  # ← full hierarchy
 
 
@@ -161,7 +162,7 @@ def _save_buffer(
 
     title_line = buffer[0]
     candidate_lines = buffer[1:]
-    log.info(f"TEST CONTEST: {title_line}")
+    log.debug(f"TEST CONTEST: {title_line}")
 
     # -----------------------------------------------------------------
     # 1. Parse Contest Title → Create Contest object
@@ -184,7 +185,7 @@ def _save_buffer(
         contest=contest,           # for over/undervotes
         event_party=event.party    # fallback party
     )
-    log.info(f'Found Candidates: {candidates}')
+    # log.debug(f'Found Candidates: {candidates}')
 
     # Link candidates
     for cand in candidates:
@@ -205,6 +206,14 @@ def main() -> None:
     if OUTPUT_CSV.exists():
         OUTPUT_CSV.unlink()
         log.info(f"Deleted previous output: {OUTPUT_CSV}")
+
+    log_file = LOG_DIR / "pdf_extraction.log"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    
+    with open(log_file, "w", encoding="utf-8"):
+        pass  # opens and truncates to 0 bytes
+    
+    log.info(f"Started fresh log: {log_file}")
 
     writer = CSVWriter(batch_size=BATCH_SIZE)
     all_events: List[EventData] = []
@@ -227,7 +236,7 @@ def main() -> None:
     import pandas as pd
     df = pd.DataFrame(all_rows)
     df.to_csv(OUTPUT_CSV, index=False)
-    log.info(f"Final CSV written: {OUTPUT_CSV} ({len(df):,} rows)")
+    log.debug(f"Final CSV written: {OUTPUT_CSV} ({len(df):,} rows)")
 
     writer.flush()
     print(f"\nAll done! → {OUTPUT_CSV}")

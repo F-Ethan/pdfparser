@@ -20,7 +20,15 @@ class EventParser:
         r"^.*\s([A-Z]+\s[0-9][0-9],\s[0-9][0-9][0-9][0-9])$", re.IGNORECASE
     )
     _ELECTION_TYPE = re.compile(
-        r"^.*\s[-—–]\s(.*election.*)\s[-—–].*", re.IGNORECASE
+        r"""
+        (?i)                     # case-insensitive
+        .*?                      # junk before
+        \b                       # word boundary
+        (Primary|General|Runoff|Special)
+        \b                       # word boundary
+        .*?                      # junk after
+        """,
+        re.VERBOSE
     )
     _COUNTY = re.compile(r"^(.*?\s*County)(.*)", re.IGNORECASE)
     _VOTERS = re.compile(r"Total Number of Voters\s*:\s+(\d{1,3}(?:,\d{3})*)")
@@ -56,9 +64,16 @@ class EventParser:
         return ""
 
     def _extract_election_type(self) -> str:
+        """
+        Extract election type from first 10 lines.
+        Looks for: Primary, General, Runoff, Special
+        """
         for line in self._lines[:10]:
-            if m := self._ELECTION_TYPE.match(line):
-                return m.group(1).strip()
+            line = line.strip()
+            if not line:
+                continue
+            if m := EventParser._ELECTION_TYPE.search(line):
+                return m.group(1).upper()  # → PRIMARY, GENERAL, etc.
         return ""
 
     def _extract_county(self) -> str:
