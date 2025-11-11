@@ -1,0 +1,61 @@
+# -------------------------------------------------
+# 1. LOGS – never commit debug files
+# -------------------------------------------------
+logs/
+*.log
+
+# -------------------------------------------------
+# 2. INPUT – raw PDFs (often huge, sensitive)
+# -------------------------------------------------
+input/
+inputs/
+pdfs/
+*.pdf
+
+# -------------------------------------------------
+# 3. OUTPUT – generated CSVs, JSONs, etc.
+# -------------------------------------------------
+output/
+outputs/
+results/
+*.csv
+*.json
+*.xlsx
+
+# -------------------------------------------------
+# 4. Python cache & virtual envs
+# -------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# -------------------------------------------------
+# 5. IDE / Editor junk
+# -------------------------------------------------
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+
+# -------------------------------------------------
+# 6. OS garbage
+# -------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -------------------------------------------------
+# 7. Optional: keep config examples, ignore real config
+# -------------------------------------------------
+# config.py          # ← your real config (has paths, secrets)
+# config.example.py  # ← commit this as a template
