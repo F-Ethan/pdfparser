@@ -88,39 +88,56 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
         # -----------------------------------------------------------------
         # 4. Page loop – build hierarchy
         # -----------------------------------------------------------------
+
         for pno in tqdm(page_range, desc=pdf_path.stem, unit="page", leave=False):
-            if pno > total_pages:
-                log.warning(f"Skipping page {pno} > total pages ({total_pages})")
-                continue
             page = pdf.pages[pno - 1]
             lines = page_to_lines(page)
 
+            # -------------------------------------------------
+            # 1. Reset precinct at start of every page
+            # -------------------------------------------------
+            current_precinct = None
+            buffer = []
+
+            # -------------------------------------------------
+            # 2. Process every line on the page
+            # -------------------------------------------------
             for line in lines:
-                # --- 1. Detect new precinct ---
-                if precinct := PrecinctParser.parse(line):
-                    # Save previous contest block
-                    if current_precinct and buffer:
-                        _save_buffer(buffer, event, current_precinct, writer)
-                        buffer = []
+                line = line.strip()
+                if not line:
+                    continue
 
-                    # Start new precinct
-                    current_precinct = precinct
-                    current_precinct.event = event
-                    current_precinct.contests = []
-                    event.precincts.append(current_precinct)
-                    continue  # skip to next line
+                # ----- A. Precinct not set yet → look for precinct -----
+                if current_precinct is None:
+                    if precinct := PrecinctParser.parse(line):
+                        current_precinct = precinct
+                        current_precinct.event = event
+                        current_precinct.contests = []
+                        event.precincts.append(current_precinct)
+                        log.info(f"PAGE {pno} → PRECINCT SET: {precinct.number} | Cast: {precinct.ballots_cast}")
+                        continue
+                    else:
+                        # Still no precinct → skip contest checks
+                        continue
 
-                # --- 2. Detect new contest title ---
+                # ----- B. Precinct IS set → now look for contest title -----
                 if current_precinct and ContestParser.is_contest_title(line):
                     if buffer:
                         _save_buffer(buffer, event, current_precinct, writer)
-                    buffer = [line]  # start new contest block
-                elif buffer:
-                    buffer.append(line)
+                    buffer = [line]
+                    log.debug(f"CONTEST START: {line[:60]}")
+                    continue
 
-            # GC every 50 pages
-            if pno % 50 == 0:
-                gc.collect()
+                # ----- C. Inside a contest → add to buffer -----
+                if buffer:
+                    buffer.append(line)
+                    continue
+
+            # -------------------------------------------------
+            # 3. End of page → save final contest (if any)
+            # -------------------------------------------------
+            if buffer and current_precinct:
+                _save_buffer(buffer, event, current_precinct, writer)
 
         # --- Final contest block ---
         if buffer and current_precinct:
@@ -167,6 +184,7 @@ def _save_buffer(
         contest=contest,           # for over/undervotes
         event_party=event.party    # fallback party
     )
+    log.info(f'Found Candidates: {candidates}')
 
     # Link candidates
     for cand in candidates:

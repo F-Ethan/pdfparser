@@ -50,6 +50,7 @@ class ContestParser:
         for term in OFFICE_TERMS
     ]
 
+
     @staticmethod
     def is_contest_title(line: str) -> bool:
         """Return True if the line looks like a contest title."""
@@ -57,15 +58,30 @@ class ContestParser:
         if not line:
             return False
 
-        # 1. Reject report headers
+        # -------------------------------------------------
+        # 1. BLACKLIST – never treat these as contest titles
+        # -------------------------------------------------
         if ContestParser._BLACKLIST_RE.match(line):
             return False
 
-        # 2. Use the configurable office-term list
+        # NEW: Block any line that starts with "Precinct"
+        if line.lower().startswith("precinct"):
+            log.debug(f"BLACKLISTED (Precinct): {line[:60]}")
+            return False
+
+        # NEW: Block page footers like "Page9of500 05/14/2019"
+        if re.match(r"^Page\d+of\d+", line, re.IGNORECASE):
+            return False
+
+        # -------------------------------------------------
+        # 2. REGULAR EXPRESSION MODE (your config)
+        # -------------------------------------------------
         if REGULAR_EXPRESSION:
             return any(p.search(line) for p in ContestParser._COMPILED_PATTERNS)
 
-        # 3. Fallback: “Vote for N”
+        # -------------------------------------------------
+        # 3. FALLBACK: “Vote for N”
+        # -------------------------------------------------
         return bool(re.search(r"\bvote for \d+\b", line, re.IGNORECASE))
 
     # --------------------------------------------------------------------- #
