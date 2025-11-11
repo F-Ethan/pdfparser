@@ -61,6 +61,8 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
         event: EventData = event_parser.parse()  # EventData with empty precincts
         event.precincts = []  # ensure list is mutable
 
+        log.info(f"FIRST LINES: {first_lines}")
+
         # -----------------------------------------------------------------
         # 2. Page range
         # -----------------------------------------------------------------
@@ -82,7 +84,7 @@ def extract_pdf(pdf_path: Path, writer: CSVWriter) -> EventData:
         current_precinct: Optional[Precinct] = None
         buffer: List[str] = []
 
-        
+
         # -----------------------------------------------------------------
         # 4. Page loop – build hierarchy
         # -----------------------------------------------------------------
@@ -142,6 +144,7 @@ def _save_buffer(
 
     title_line = buffer[0]
     candidate_lines = buffer[1:]
+    log.info(f"TEST CONTEST: {title_line}")
 
     # -----------------------------------------------------------------
     # 1. Parse Contest Title → Create Contest object
@@ -173,12 +176,7 @@ def _save_buffer(
     # -----------------------------------------------------------------
     # 3. Build and write CSV rows
     # -----------------------------------------------------------------
-    rows = CandidateParser.build_rows(
-        candidates=candidates,
-        event=event,
-        precinct=precinct,
-        contest=contest,
-    )
+    rows = event.contest_to_rows(precinct, contest)
     writer.add_rows(rows)
 
 # --------------------------------------------------------------------- #

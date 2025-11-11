@@ -21,7 +21,7 @@ class CandidateParser:
     # --------------------------------------------------------------------- #
     _VOTE_PERCENT_PAIR = re.compile(r"(\d{1,3}(?:,\d{3})*)\s+(\d+\.\d{2})%")
     _SUMMARY_ROW = re.compile(r"^(Cast|Over|Under)\s+Votes:", re.IGNORECASE)
-    _INFO_PARTY = re.compile(r"^(.*)\s+([A-Z]{3,})\b\.?$", re.IGNORECASE)
+    _INFO_PARTY = re.compile(r"^(.*?)\s+(?:.\s+)?([A-Z]{3,}|[A-Z]+ Party)\b\.?$", re.IGNORECASE)
     _INFO_CAPTURE = re.compile(
         r"^(?!.*\bCast Votes:)(.+?)\s+(?=\d{1,3}(?:,\d{3})*\s+\d+\.\d{2}%)"
     )
@@ -132,34 +132,6 @@ class CandidateParser:
     # --------------------------------------------------------------------- #
     # NEW: Build CSV rows from parsed data
     # --------------------------------------------------------------------- #
-    @staticmethod
-    def build_rows(
-        candidates: List[CandidateResult],
-        event: EventData,
-        precinct: Precinct,
-        contest: Contest,
-    ) -> List[dict]:
-        """
-        Convert parsed candidates into CSV-ready dict rows.
-        Called by _save_buffer() in the controller.
-        """
-        rows = []
-        for cand in candidates:
-            rows.append({
-                "Event Date": event.date,
-                "Event Type": event.election_type,
-                "County": event.county,
-                "Precinct Name": precinct.name,
-                "Candidate": cand.name,
-                "Total Votes Cast": cand.total_votes,
-                "Office": contest.office,
-                "# of winners": contest.vote_for,
-                "Total Ballots Cast": event.total_ballots,
-                "Ballots Cast": precinct.ballots_cast,
-                "Over Votes": contest.overvotes or "N/A",
-                "Undervotes": contest.undervotes or "N/A",
-                "Candidate Party": cand.party or "",
-                "Contest Party": event.party,
-                "Raw Title": contest.title,
-            })
-        return rows
+    # In src/candidate.py (inside CandidateParser class)
+
+    

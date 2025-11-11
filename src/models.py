@@ -18,28 +18,81 @@ class EventData:
 
     precincts: List['Precinct'] = field(default_factory=list)
 
+ 
     def to_csv_rows(self) -> List[dict]:
+        """
+        Export the full hierarchy to CSV rows.
+        One row per candidate per vote channel (Total, Early, Absentee, Election Day).
+        """
         rows = []
+
         for precinct in self.precincts:
             for contest in precinct.contests:
                 for cand in contest.candidates:
-                    rows.append({
-                        "Event Date": self.date,
-                        "Event Type": self.election_type,
-                        "County": self.county,
-                        "Precinct Name": precinct.name,
-                        "Candidate": cand.name,
-                        "Total Votes Cast": cand.total_votes,
-                        "Office": contest.office,
-                        "# of winners": contest.vote_for,  # ← fixed
-                        "Total Ballots Cast": self.total_ballots,
-                        "Ballots Cast": precinct.ballots_cast,
-                        "Over Votes": precinct.overvotes or "N/A",
-                        "Undervotes": precinct.undervotes or "N/A",
-                        "Candidate Party": cand.party or "",
-                        "Contest Party": self.party,
-                        "Raw Title": contest.title,
-                    })
+                    # Define all possible channels with their vote counts
+                    channels = [
+                        ("Early", cand.early_votes),
+                        ("Absentee", cand.absentee_votes),
+                        ("Election Day", cand.election_day_votes),
+                        ("Total", cand.total_votes),
+                    ]
+
+                    for channel_name, vote_count in channels:
+
+                        rows.append({
+                            "Event Date": self.date,
+                            "Event Type": self.election_type or 'N/A',
+                            "County": self.county,
+                            "Precinct Name": precinct.number,
+                            "Vote Channel": channel_name,           # ← CORRECT
+                            "Candidate": cand.name,
+                            "Total Votes Cast": vote_count,         # ← per channel
+                            "Office": contest.office,
+                            "district Name": contest.title,
+                            "district Type": contest.title,
+                            "# of winners": contest.vote_for,
+                            "Total Ballots Cast": self.total_ballots,
+                            "Ballots Cast": precinct.ballots_cast,
+                            "Over Votes": getattr(precinct, "overvotes", "") or "N/A",
+                            "Undervotes": getattr(precinct, "undervotes", "") or "N/A",
+                            "Candidate Party": cand.party or "",
+                            "Contest Party": self.party,
+                            "Raw Title": contest.title,
+                        })
+
+        return rows
+    
+    # In EventData
+    def contest_to_rows(self, precinct: Precinct, contest: Contest) -> List[dict]:
+        rows = []
+        for cand in contest.candidates:
+            channels = [
+                ("Early", cand.early_votes),
+                ("Absentee", cand.absentee_votes),
+                ("Election Day", cand.election_day_votes),
+                ("Total", cand.total_votes),
+            ]
+            for channel, votes in channels:
+                rows.append({
+                    "Event Date": self.date,
+                    "Event Type": self.election_type or 'N/A',
+                    "County": self.county,
+                    "Precinct Name": precinct.number,
+                    "Vote Channel": channel,
+                    "Candidate": cand.name,
+                    "Total Votes Cast": votes,
+                    "Office": contest.office,
+                    "district Name": contest.title,
+                    "district Type": contest.title,
+                    "# of winners": contest.vote_for,
+                    "Total Ballots Cast": self.total_ballots,
+                    "Ballots Cast": precinct.ballots_cast,
+                    "Over Votes": getattr(precinct, "overvotes", "") or "N/A",
+                    "Undervotes": getattr(precinct, "undervotes", "") or "N/A",
+                    "Candidate Party": cand.party or "",
+                    "Contest Party": self.party,
+                    "Raw Title": contest.title,
+                })
         return rows
 
 
@@ -49,7 +102,6 @@ class EventData:
 @dataclass
 class Precinct:
     number: str
-    name: str = ""
     ballots_cast: str = ""
     registered_voters: str = ""
     overvotes: str = ""

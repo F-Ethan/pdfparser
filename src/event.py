@@ -49,9 +49,9 @@ class EventParser:
     # --------------------------------------------------------------------- #
     def _extract_date(self) -> str:
         for line in self._lines[:10]:
-            if m := self._DATE_SLASH.match(line):
+            if m := self._DATE_SLASH.search(line):
                 return m.group(0)
-            if m := self._DATE_MONTH.match(line):
+            if m := self._DATE_MONTH.search(line):
                 return m.group(1)
         return ""
 
