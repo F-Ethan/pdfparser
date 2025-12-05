@@ -25,7 +25,6 @@ class ContestParser:
         "Summary Report",
         "Page",
         "Continued",
-        "County",
         "Election",
         "Ballots Cast",
         "Registered Voters",
@@ -42,7 +41,8 @@ class ContestParser:
         "Member", "Justice", "Lieutenant", "Comptroller", "Railroad",
         "Senator", "Criminal", "Family", "Probate", "Peace", "Library",
         "Council", "Independent", "Councilmember", "Trustee", "District",
-        "Place", "Chair", "County Constable", "Assessor",
+        "Place", "Chair", "Constable", "Assessor", "PRESIDENTIAL", 
+        "ELECTORS", "Shall", "AMENDMENT", "REFERENDUM", 
     ]
 
     _COMPILED_PATTERNS = [

@@ -11,7 +11,7 @@ OUTPUT_CSV = OUTPUT_DIR / "Election_Results.csv"
 # --------------------------------------------------------------------- #
 # Runtime configuration
 # --------------------------------------------------------------------- #
-IN_DEVELOPMENT: bool = True
+IN_DEVELOPMENT: bool = False
 BATCH_SIZE: int = 300
 DEBUG_PAGE_RANGE: Optional[Tuple[int, int]] = None  # e.g. (50, 70)
 PARTY_BY_FILE: bool = False
