@@ -42,7 +42,7 @@ class ContestParser:
         "Senator", "Criminal", "Family", "Probate", "Peace", "Library",
         "Council", "Independent", "Councilmember", "Trustee", "District",
         "Place", "Chair", "Constable", "Assessor", "PRESIDENTIAL", 
-        "ELECTORS", "Shall", "AMENDMENT", "REFERENDUM", 
+        "ELECTORS", "Shall", "AMENDMENT", "REFERENDUM", "ballot"
     ]
 
     _COMPILED_PATTERNS = [
