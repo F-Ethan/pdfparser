@@ -1,0 +1,7 @@
+*.csv
+*.pdf
+*.log
+logs/
+input/
+output/
+venv/
