@@ -46,6 +46,7 @@ class EventParser:
         return EventData(
             date=self._extract_date(),
             election_type=self._extract_election_type(),
+            election_title=self._extract_election_title(),
             county=self._extract_county(),
             total_ballots=self._extract_total_ballots(),
             party=self._extract_party(),
@@ -74,6 +75,28 @@ class EventParser:
                 continue
             if m := EventParser._ELECTION_TYPE.search(line):
                 return m.group(1).upper()  # → PRIMARY, GENERAL, etc.
+        return ""
+
+    _TRAILING_DATE = re.compile(
+        r"\s+(January|February|March|April|May|June|July|August|September|October|November|December)"
+        r"\s+\d{1,2}\s+\d{4}\s*$",
+        re.IGNORECASE,
+    )
+
+    def _extract_election_title(self) -> str:
+        """Return the full election title line (the line containing the election type keyword)."""
+        for line in self._lines[:10]:
+            line = line.strip()
+            if not line:
+                continue
+            if EventParser._ELECTION_TYPE.search(line):
+                # Strip non-alphanumeric except spaces and hyphens
+                title = re.sub(r"[^a-zA-Z0-9 \-]", "", line).strip()
+                # Remove trailing written-out date (already in filename prefix)
+                title = self._TRAILING_DATE.sub("", title).strip()
+                # Collapse multiple spaces to one
+                title = re.sub(r" {2,}", " ", title)
+                return title
         return ""
 
     def _extract_county(self) -> str:

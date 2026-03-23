@@ -12,6 +12,7 @@ import re
 class EventData:
     date: str = ""
     election_type: str = ""
+    election_title: str = ""
     county: str = ""
     total_ballots: str = ""
     party: str = ""

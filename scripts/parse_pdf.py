@@ -3,6 +3,7 @@
 Main PDF → CSV extractor – hierarchical, clean, no static state.
 """
 import gc
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -31,6 +32,18 @@ from src.models import EventData, Precinct, Contest, CandidateResult
 from src.utils import group_words_into_lines
 
 log = get_logger()
+
+
+# --------------------------------------------------------------------- #
+# Helper: normalize date to ISO format (YYYY-MM-DD)
+# --------------------------------------------------------------------- #
+def _to_iso_date(date_str: str) -> str:
+    for fmt in ("%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return date_str.replace("/", "-")  # fallback: best-effort
 
 
 # --------------------------------------------------------------------- #
@@ -203,16 +216,13 @@ def _save_buffer(
 # --------------------------------------------------------------------- #
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    if OUTPUT_CSV.exists():
-        OUTPUT_CSV.unlink()
-        log.info(f"Deleted previous output: {OUTPUT_CSV}")
 
     log_file = LOG_DIR / "pdf_extraction.log"
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     with open(log_file, "w", encoding="utf-8"):
         pass  # opens and truncates to 0 bytes
-    
+
     log.info(f"Started fresh log: {log_file}")
 
     writer = CSVWriter(batch_size=BATCH_SIZE)
@@ -228,6 +238,16 @@ def main() -> None:
         event = extract_pdf(pdf_path, writer)
         all_events.append(event)
 
+    # Build dynamic output filename from first event's date and election_type
+    first = all_events[0] if all_events else None
+    date_iso = _to_iso_date(first.date) if first and first.date else "--Date--"
+    title_str = (first.election_title if first and first.election_title else "--Election--").replace(" ", "_")
+    output_path = OUTPUT_DIR / f"tarranttx--{date_iso}_{title_str}.csv"
+
+    if output_path.exists():
+        output_path.unlink()
+        log.info(f"Deleted previous output: {output_path}")
+
     # Final CSV from full hierarchy
     all_rows = []
     for event in all_events:
@@ -235,11 +255,11 @@ def main() -> None:
 
     import pandas as pd
     df = pd.DataFrame(all_rows)
-    df.to_csv(OUTPUT_CSV, index=False)
-    log.debug(f"Final CSV written: {OUTPUT_CSV} ({len(df):,} rows)")
+    df.to_csv(output_path, index=False)
+    log.debug(f"Final CSV written: {output_path} ({len(df):,} rows)")
 
     writer.flush()
-    print(f"\nAll done! → {OUTPUT_CSV}")
+    print(f"\nAll done! → {output_path}")
 
 
 if __name__ == "__main__":
